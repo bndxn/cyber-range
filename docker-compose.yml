@@ -1,0 +1,14 @@
+services:
+  vulnerable-app:
+    build: ./vulnerable-app
+    ports:
+      - "8080:8080"
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
+    networks:
+      - cyber-range
+
+networks:
+  cyber-range:
+    driver: bridge
